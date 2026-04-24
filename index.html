@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus | Advanced Port Analyzer</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="glass">
+    <div class="brand" style="cursor: pointer; transition: 0.3s;" onclick="window.location.reload()" onmouseover="this.style.textShadow='0 0 15px var(--accent-1)'" onmouseout="this.style.textShadow='none'">
+      <button class="mobile-menu-btn" onclick="event.stopPropagation(); ui.toggleSidebar()">☰</button>
+      <svg width="32" height="32" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 0 8px var(--accent-1));">
+        <!-- Outer Hexagon -->
+        <polygon points="50,5 89,27.5 89,72.5 50,95 11,72.5 11,27.5" stroke="var(--accent-1)" stroke-width="5" fill="rgba(0, 255, 170, 0.15)"/>
+        <!-- Inner Tech Core -->
+        <circle cx="50" cy="50" r="18" fill="var(--accent-2)" />
+        <circle cx="50" cy="50" r="26" stroke="var(--accent-1)" stroke-width="2" stroke-dasharray="4 4" />
+        <!-- Data Lines -->
+        <path d="M50 5 L50 24 M50 76 L50 95 M11 27.5 L26 36 M74 64 L89 72.5 M11 72.5 L26 64 M74 36 L89 27.5" stroke="var(--accent-2)" stroke-width="3" />
+      </svg>
+      <span style="font-size: 1.4rem; font-weight: 800; tracking: 3px;">NEXUS</span><span style="font-weight: 300; opacity: 0.8; margin-left: -5px;">CORE</span>
+    </div>
+    <div class="nav-right">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div class="status-dot"></div>
+        <span class="hide-mobile">SYSTEM ONLINE</span>
+      </div>
+      <div id="navTime" style="font-family: 'JetBrains Mono', monospace; color: var(--accent-1);">00:00:00</div>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar glass" id="sidebar">
+      
+      <div class="panel">
+        <div class="panel-title">Target Parameters</div>
+        <div class="field">
+          <label>Target IP / Hostname</label>
+          <input type="text" id="target" value="192.168.1.100" placeholder="e.g. 10.0.0.1">
+        </div>
+        <div class="field">
+          <label>Port Spectrum</label>
+          <input type="text" id="portRange" value="1-1024" placeholder="1-65535, 80,443">
+        </div>
+        <div class="field">
+          <label>Scan Vector</label>
+          <select id="scanMode">
+            <option value="syn">SYN Stealth (-sS)</option>
+            <option value="tcp">TCP Connect (-sT)</option>
+            <option value="udp">UDP Scan (-sU)</option>
+            <option value="aggressive">Aggressive (-A)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Analysis Modules</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="optOS" checked> OS Fingerprint
+          </label>
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="optSV" checked> Service Probing
+          </label>
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="optVuln"> Deep Vuln Scan
+          </label>
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="optTrace"> Packet Trace
+          </label>
+        </div>
+        
+        <div class="field">
+          <label style="display: flex; justify-content: space-between;">
+            Aggressiveness <span id="timingVal" style="color: var(--accent-1);">T3</span>
+          </label>
+          <input type="range" id="timing" min="0" max="5" value="3" style="width: 100%; cursor: pointer;">
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="color: var(--warning);">Stealth & Evasion</div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="evaFrag"> Packet Fragmentation (-f)
+          </label>
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="evaDecoy"> Decoy Injection (-D)
+          </label>
+          <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 8px; color: var(--text-main);">
+            <input type="checkbox" id="evaMac"> MAC Address Spoofing
+          </label>
+        </div>
+      </div>
+
+      <div class="panel" style="border-bottom: none; margin-top: auto;">
+        <button id="scanBtn" class="btn-primary" onclick="toggleScan()">
+          INITIATE SCAN
+        </button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
+          <button style="background:none; border:1px solid var(--border-color); color:var(--text-muted); padding:8px; border-radius:4px; font-size:0.7rem; cursor:pointer;" onclick="ui.clearAll()">CLEAR</button>
+          <button style="background:none; border:1px solid var(--border-color); color:var(--text-muted); padding:8px; border-radius:4px; font-size:0.7rem; cursor:pointer;" onclick="features.exportResults()">EXPORT</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <div class="main-content">
+      
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-value" id="sTotal">0</div>
+          <div class="stat-label">Scanned</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value text-accent-1" id="sOpen">0</div>
+          <div class="stat-label">Open Ports</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value text-warning" id="sFiltered">0</div>
+          <div class="stat-label">Filtered</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value text-danger" id="sVulns">0</div>
+          <div class="stat-label">Vulnerabilities</div>
+        </div>
+      </div>
+
+      <!-- Toolbar Tabs -->
+      <div class="toolbar">
+        <button class="tab-btn active" onclick="ui.switchTab('terminal', this)">Live Output</button>
+        <button class="tab-btn" onclick="ui.switchTab('results', this)">Open Ports</button>
+        <button class="tab-btn" onclick="ui.switchTab('services', this)">Services</button>
+        <button class="tab-btn" onclick="ui.switchTab('vulns', this)">Vulnerabilities</button>
+        <button class="tab-btn" onclick="ui.switchTab('os', this)">OS Identity</button>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-container">
+        <div class="progress-header">
+          <span id="progressLabel">READY — Awaiting input vector</span>
+          <span id="progressPct" style="font-family: 'JetBrains Mono', monospace; font-weight: bold; color: var(--accent-1);">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+
+      <!-- Views -->
+      <div class="views-container">
+        
+        <!-- Terminal -->
+        <div class="view active" id="view-terminal">
+          <div class="terminal-output" id="terminal">
+            <div class="t-head">NEXUS CORE V4.0 — ADVANCED NETWORK INTELLIGENCE</div>
+            <div style="color: var(--text-dark);">────────────────────────────────────────────────────────────</div>
+            <div class="t-info">System primed. Ready to inject packets.</div>
+            <div style="margin-top: 12px;"><span class="cursor" style="display:inline-block; width:8px; height:16px; background:var(--accent-1); animation:blink 1s step-end infinite;"></span></div>
+          </div>
+        </div>
+
+        <!-- Open Ports -->
+        <div class="view" id="view-results">
+          <table class="data-table" id="resultsTable" style="display: none;">
+            <thead>
+              <tr>
+                <th>PORT</th>
+                <th>PROTO</th>
+                <th>STATE</th>
+                <th>SERVICE</th>
+                <th>DETAILS</th>
+                <th>RISK</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+
+        <!-- Services -->
+        <div class="view" id="view-services">
+          <div class="services-grid" id="servicesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px;"></div>
+        </div>
+
+        <!-- Vulnerabilities -->
+        <div class="view" id="view-vulns">
+          <div class="vuln-grid" id="vulnList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px;"></div>
+        </div>
+
+        <!-- OS & Details -->
+        <div class="view" id="view-os">
+          <div id="osContent" style="display: none;"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Deep Detail Modal -->
+  <div class="modal-overlay" id="portModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalPortTitle">PORT 80 / TCP</h2>
+        <button class="close-modal" onclick="ui.closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-grid">
+          <div class="detail-box">
+            <h3>Service Identity</h3>
+            <div id="modalSvcName" style="font-size:1.2rem; color:var(--accent-2); font-weight:bold; margin-bottom:10px;">HTTP</div>
+            <p id="modalBanner" style="font-size:0.85rem; color:var(--text-muted);">Apache/2.4.41 (Ubuntu)</p>
+          </div>
+          <div class="detail-box">
+            <h3>Risk Assessment</h3>
+            <div id="modalRisk" style="font-size:1.2rem; font-weight:bold;">Low Risk</div>
+            <p id="modalCve" style="font-size:0.85rem; color:var(--danger); margin-top:5px;"></p>
+          </div>
+        </div>
+        
+        <div class="detail-box" style="margin-bottom:20px;">
+          <h3>MITRE ATT&CK Mapping & Mitigation</h3>
+          <p id="modalMitre" style="font-size:0.85rem; color:var(--text-main); line-height:1.5;"></p>
+        </div>
+
+        <div class="detail-box">
+          <h3>Packet Hex Dump (Simulated Response)</h3>
+          <div class="hex-dump" id="modalHexDump"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    @media (max-width: 768px) {
+      .hide-mobile { display: none; }
+      nav { padding: 0 15px; }
+      .brand { font-size: 1rem; }
+      .view { padding: 10px; }
+      .stat-value { font-size: 1.2rem; }
+      .stat-card { padding: 10px; }
+    }
+  </style>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/features.js"></script>
+  <script src="js/scanner.js"></script>
+</body>
+</html>
